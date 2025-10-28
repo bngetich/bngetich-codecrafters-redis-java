@@ -22,23 +22,15 @@ public class Main {
       clientSocket = serverSocket.accept();
       System.out.println("Client connected!");
 
-      InputStream in = clientSocket.getInputStream();
-      OutputStream out = clientSocket.getOutputStream();
-
       byte[] buffer = new byte[1024];
 
       while (true) {
-        // Keep the server running to accept multiple commands.
-        int bytesRead = in.read();
-
-        if(bytesRead == -1){
-          break;
-        }
-        String received = new String(buffer, 0, bytesRead);
-        if(received.contains("PING")){
-           out.write("+PONG\r\n".getBytes());
-           out.flush();
-        }      
+        // Read input from client.
+        byte[] input = new byte[1024];
+        clientSocket.getInputStream().read(input);
+        String inputString = new String(input).trim();
+        System.out.println("Received: " + inputString);
+        clientSocket.getOutputStream().write("+PONG\r\n".getBytes());
       }
     } catch (IOException e) {
       System.out.println("IOException: " + e.getMessage());
