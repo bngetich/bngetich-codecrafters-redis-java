@@ -1,4 +1,5 @@
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -19,9 +20,26 @@ public class Main {
       serverSocket.setReuseAddress(true);
       // Wait for connection from client.
       clientSocket = serverSocket.accept();
+      System.out.println("Client connected!");
+
+      InputStream in = clientSocket.getInputStream();
       OutputStream out = clientSocket.getOutputStream();
-      out.write("+PONG\r\n".getBytes());
-      out.flush();
+
+      byte[] buffer = new byte[1024];
+
+      while (true) {
+        // Keep the server running to accept multiple commands.
+        int bytesRead = in.read();
+
+        if(bytesRead == -1){
+          break;
+        }
+        String received = new String(buffer, 0, bytesRead);
+        if(received.contains("PING")){
+           out.write("+PONG\r\n".getBytes());
+           out.flush();
+        }      
+      }
     } catch (IOException e) {
       System.out.println("IOException: " + e.getMessage());
     } finally {
