@@ -6,42 +6,49 @@ import java.net.Socket;
 
 public class Main {
   public static void main(String[] args) {
-    // You can use print statements as follows for debugging, they'll be visible
-    // when running tests.
-    System.out.println("Logs from your program will appear here!");
+    System.out.println("Server starting...");
 
-    ServerSocket serverSocket = null;
-    Socket clientSocket = null;
-    int port = 6379;
-    try {
-      serverSocket = new ServerSocket(port);
-      // Since the tester restarts your program quite often, setting SO_REUSEADDR
-      // ensures that we don't run into 'Address already in use' errors
-      serverSocket.setReuseAddress(true);
-      // Wait for connection from client.
-      clientSocket = serverSocket.accept();
+    final int PORT = 6379;
+
+    try (ServerSocket listeningSocket = new ServerSocket(PORT)) {
+      listeningSocket.setReuseAddress(true);
+
+      System.out.println("Waiting for a client to connect...");
+      
+      // ✅ When a client connects, the server gets a new Socket to talk to that specific client
+      Socket connectionToClient = listeningSocket.accept();
       System.out.println("Client connected!");
+
+      // ✅ These are the server’s communication streams for this client
+      InputStream serverInput = connectionToClient.getInputStream();   // Server listens 🔊
+      OutputStream serverOutput = connectionToClient.getOutputStream(); // Server talks 🎤
 
       byte[] buffer = new byte[1024];
 
       while (true) {
-        // Read input from client.
-        byte[] input = new byte[1024];
-        clientSocket.getInputStream().read(input);
-        String inputString = new String(input).trim();
-        System.out.println("Received: " + inputString);
-        clientSocket.getOutputStream().write("+PONG\r\n".getBytes());
+        // ✅ Wait for client to send data (blocks until something arrives)
+        int bytesRead = serverInput.read(buffer);
+
+        // ✅ If client disconnects, input stream returns -1
+        if (bytesRead == -1) {
+          System.out.println("Client disconnected.");
+          break;
+        }
+
+        // ✅ Convert only the received bytes to a string
+        String input = new String(buffer, 0, bytesRead).trim();
+        System.out.println("Received from client: " + input);
+
+        // ✅ Respond with PONG to any command (PING or otherwise)
+        serverOutput.write("+PONG\r\n".getBytes());
+        serverOutput.flush(); // 🔥 Make sure the client receives it immediately
       }
+
+      connectionToClient.close(); // ✅ Close connection when client is done
+      System.out.println("Connection closed. Server shutting down.");
+
     } catch (IOException e) {
       System.out.println("IOException: " + e.getMessage());
-    } finally {
-      try {
-        if (clientSocket != null) {
-          clientSocket.close();
-        }
-      } catch (IOException e) {
-        System.out.println("IOException: " + e.getMessage());
-      }
     }
   }
 }
