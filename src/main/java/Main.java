@@ -4,6 +4,7 @@ import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 
+// Redis server implementation with Java 17
 public class Main {
   public static void main(String[] args) {
     System.out.println("Server starting...");
