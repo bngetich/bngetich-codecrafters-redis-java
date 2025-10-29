@@ -8,12 +8,19 @@ public class Main {
   public static void main(String[] args) {
     System.out.println("Server starting...");
 
-    final int PORT = 6379;
+    int port = 6379;
+    if (args.length > 0) {
+      try {
+        port = Integer.parseInt(args[0]);
+      } catch (NumberFormatException e) {
+        System.out.println("Invalid port argument, using default 6379.");
+      }
+    }
 
-    try (ServerSocket listeningSocket = new ServerSocket(PORT)) {
+    try (ServerSocket listeningSocket = new ServerSocket(port)) {
       listeningSocket.setReuseAddress(true);
 
-      System.out.println("Waiting for a client to connect...");
+      System.out.println("Waiting for a client to connect on port " + port + "...");
       
       // ✅ When a client connects, the server gets a new Socket to talk to that specific client
       Socket connectionToClient = listeningSocket.accept();
