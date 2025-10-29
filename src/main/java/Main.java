@@ -4,59 +4,73 @@ import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 
-// Redis server implementation with Java 17
 public class Main {
-  public static void main(String[] args) {
-    System.out.println("Server starting...");
+    // Simple handler for client connections
+    static class ClientHandler extends Thread {
+        private final Socket clientSocket;
 
-    int port = 6379;
-    if (args.length > 0) {
-      try {
-        port = Integer.parseInt(args[0]);
-      } catch (NumberFormatException e) {
-        System.out.println("Invalid port argument, using default 6379.");
-      }
-    }
-
-    try (ServerSocket listeningSocket = new ServerSocket(port)) {
-      listeningSocket.setReuseAddress(true);
-
-      System.out.println("Waiting for a client to connect on port " + port + "...");
-      
-      // ✅ When a client connects, the server gets a new Socket to talk to that specific client
-      Socket connectionToClient = listeningSocket.accept();
-      System.out.println("Client connected!");
-
-      // ✅ These are the server’s communication streams for this client
-      InputStream serverInput = connectionToClient.getInputStream();   // Server listens 🔊
-      OutputStream serverOutput = connectionToClient.getOutputStream(); // Server talks 🎤
-
-      byte[] buffer = new byte[1024];
-
-      while (true) {
-        // ✅ Wait for client to send data (blocks until something arrives)
-        int bytesRead = serverInput.read(buffer);
-
-        // ✅ If client disconnects, input stream returns -1
-        if (bytesRead == -1) {
-          System.out.println("Client disconnected.");
-          break;
+        public ClientHandler(Socket socket) {
+            this.clientSocket = socket;
         }
 
-        // ✅ Convert only the received bytes to a string
-        String input = new String(buffer, 0, bytesRead).trim();
-        System.out.println("Received from client: " + input);
+        public void run() {
+            try {
+                InputStream serverInput = clientSocket.getInputStream();
+                OutputStream serverOutput = clientSocket.getOutputStream();
+                byte[] buffer = new byte[1024];
 
-        // ✅ Respond with PONG to any command (PING or otherwise)
-        serverOutput.write("+PONG\r\n".getBytes());
-        serverOutput.flush(); // 🔥 Make sure the client receives it immediately
-      }
+                while (true) {
+                    int bytesRead = serverInput.read(buffer);
+                    if (bytesRead == -1) {
+                        System.out.println("Client disconnected.");
+                        break;
+                    }
 
-      connectionToClient.close(); // ✅ Close connection when client is done
-      System.out.println("Connection closed. Server shutting down.");
+                    String input = new String(buffer, 0, bytesRead).trim();
+                    System.out.println("Received from client: " + input);
 
-    } catch (IOException e) {
-      System.out.println("IOException: " + e.getMessage());
+                    serverOutput.write("+PONG\r\n".getBytes());
+                    serverOutput.flush();
+                }
+
+                clientSocket.close();
+            } catch (IOException e) {
+                System.out.println("IOException in client handler: " + e.getMessage());
+            }
+        }
     }
-  }
+
+    public static void main(String[] args) {
+        System.out.println("Server starting...");
+
+        int port = 6379;
+        if (args.length > 0) {
+            if ("--port".equals(args[0]) && args.length > 1) {
+                try {
+                    port = Integer.parseInt(args[1]);
+                } catch (NumberFormatException e) {
+                    System.out.println("Invalid port argument after --port, using default 6379.");
+                }
+            } else {
+                try {
+                    port = Integer.parseInt(args[0]);
+                } catch (NumberFormatException e) {
+                    System.out.println("Invalid port argument, using default 6379.");
+                }
+            }
+        }
+
+        try (ServerSocket listeningSocket = new ServerSocket(port)) {
+            listeningSocket.setReuseAddress(true);
+            System.out.println("Waiting for clients to connect on port " + port + "...");
+            
+            while (true) {
+                Socket clientSocket = listeningSocket.accept();
+                System.out.println("New client connected!");
+                new ClientHandler(clientSocket).start();
+            }
+        } catch (IOException e) {
+            System.out.println("IOException: " + e.getMessage());
+        }
+    }
 }
