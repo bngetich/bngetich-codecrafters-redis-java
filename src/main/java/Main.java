@@ -44,21 +44,6 @@ public class Main {
         System.out.println("Server starting...");
 
         int port = 6379;
-        if (args.length > 0) {
-            if ("--port".equals(args[0]) && args.length > 1) {
-                try {
-                    port = Integer.parseInt(args[1]);
-                } catch (NumberFormatException e) {
-                    System.out.println("Invalid port argument after --port, using default 6379.");
-                }
-            } else {
-                try {
-                    port = Integer.parseInt(args[0]);
-                } catch (NumberFormatException e) {
-                    System.out.println("Invalid port argument, using default 6379.");
-                }
-            }
-        }
 
         try (ServerSocket listeningSocket = new ServerSocket(port)) {
             listeningSocket.setReuseAddress(true);
