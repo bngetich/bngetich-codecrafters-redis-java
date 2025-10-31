@@ -7,8 +7,12 @@ import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class Main {
+    // Simple in-memory key-value store (thread-safe for concurrent clients)
+    private static final ConcurrentHashMap<String, String> STORE = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<String, Long> EXPIRY = new ConcurrentHashMap<>();
 
     public static void main(String[] args) {
         int port = 6379;
@@ -39,15 +43,61 @@ public class Main {
                 String response;
 
                 switch (op) {
-                    case "PING":
+                    case "PING": {
                         response = "+PONG\r\n";
                         break;
-                    case "ECHO":
+                    }
+                    case "ECHO": {
                         String msg = cmd.size() > 1 ? cmd.get(1) : "";
                         response = "$" + msg.length() + "\r\n" + msg + "\r\n";
                         break;
-                    default:
+                    }
+                    case "SET": {
+                        // SET key value  -> +OK
+                        if (cmd.size() < 3) {
+                            response = "-ERR wrong number of arguments for 'set' command\r\n";
+                        } else {
+                            String key = cmd.get(1);
+                            String value = cmd.get(2);
+                            STORE.put(key, value);
+
+                            if(cmd.size() > 4 && cmd.get(3).equalsIgnoreCase("PX")) {
+                                long ttl = Long.parseLong(cmd.get(4));
+                                long expireAt = System.currentTimeMillis() + ttl;
+                                EXPIRY.put(key, expireAt);
+                            }
+                            response = "+OK\r\n";
+                        }
+                        break;
+                    }
+                    case "GET": {
+                        // GET key -> $len value or $-1 if not found
+                        if (cmd.size() < 2) {
+                            response = "-ERR wrong number of arguments for 'get' command\r\n";
+                        } else {
+                            String key = cmd.get(1);
+                            String value = STORE.get(key);
+                            Long expireAt = EXPIRY.get(key);
+
+                            
+                            if(expireAt != null && System.currentTimeMillis() > expireAt){
+                                STORE.remove(key);
+                                EXPIRY.remove(key);
+                                response = "$-1\r\n"; // Null bulk string
+                                break;
+                            }
+
+                            if (value == null) {
+                                response = "$-1\r\n"; // Null bulk string
+                            } else {
+                                response = "$" + value.length() + "\r\n" + value + "\r\n";
+                            }
+                        }
+                        break;
+                    }
+                    default: {
                         response = "-ERR unknown command\r\n";
+                    }
                 }
 
                 out.write(response.getBytes());
