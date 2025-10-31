@@ -9,10 +9,10 @@
     <version>1.0</version>
 
     <properties>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
+        <!-- Target latest LTS: Java 25 -->
+        <java.version>25</java.version>
+        <maven.compiler.release>${java.version}</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <java.version>17</java.version>
     </properties>
 
     <build>
@@ -20,7 +20,11 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
+                <!-- Use an explicit recent version known to support new JDKs -->
+                <version>3.13.0</version>
                 <configuration>
+                    <!-- Compile and target Java ${java.version} -->
+                    <release>${java.version}</release>
                 </configuration>
             </plugin>
             <plugin>

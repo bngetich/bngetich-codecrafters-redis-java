@@ -1,6 +1,7 @@
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 
 public class RedisTestClient {
     static class TestClient extends Thread {
@@ -15,19 +16,51 @@ public class RedisTestClient {
                 OutputStream out = socket.getOutputStream();
                 InputStream in = socket.getInputStream();
 
-                for (int i = 1; i <= 3; i++) {
-                    out.write("PING\r\n".getBytes());
-                    out.flush();
+                // Test PING command
+                System.out.println("Client " + clientId + " - Testing PING:");
+                for (int i = 1; i <= 2; i++) {
+                    sendCommand(out, "PING");
 
                     byte[] buffer = new byte[1024];
                     int bytesRead = in.read(buffer);
                     String response = new String(buffer, 0, bytesRead);
-                    System.out.println("Client " + clientId + " - Response #" + i + ": " + response);
-                    Thread.sleep(500);
+                    System.out.println("  PING #" + i + ": " + response.trim());
+                    Thread.sleep(300);
+                }
+
+                // Test ECHO command
+                System.out.println("Client " + clientId + " - Testing ECHO:");
+                String[] echoMessages = {
+                    "Hello World",
+                    "Redis Test " + clientId,
+                    "Java 25 Rules!"
+                };
+                
+                for (String msg : echoMessages) {
+                    sendCommand(out, "ECHO", msg);
+
+                    byte[] buffer = new byte[1024];
+                    int bytesRead = in.read(buffer);
+                    String response = new String(buffer, 0, bytesRead);
+                    System.out.println("  ECHO '" + msg + "': " + response.trim());
+                    Thread.sleep(300);
                 }
             } catch (Exception e) {
                 System.out.println("Error in client " + clientId + ": " + e.getMessage());
             }
+        }
+
+        // Send a RESP-formatted command
+        private void sendCommand(OutputStream out, String... args) throws Exception {
+            StringBuilder resp = new StringBuilder();
+            resp.append("*").append(args.length).append("\r\n");
+            for (String arg : args) {
+                byte[] argBytes = arg.getBytes(StandardCharsets.UTF_8);
+                resp.append("$").append(argBytes.length).append("\r\n");
+                resp.append(arg).append("\r\n");
+            }
+            out.write(resp.toString().getBytes(StandardCharsets.UTF_8));
+            out.flush();
         }
     }
 
